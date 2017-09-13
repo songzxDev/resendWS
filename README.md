@@ -1,0 +1,2 @@
+# resendWS
+通过HttpClient调用远程的webservice接口服务，通过post方式发送已拼接好的soap请求
