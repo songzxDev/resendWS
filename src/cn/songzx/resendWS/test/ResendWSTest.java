@@ -13,7 +13,6 @@ import java.util.List;
 import cn.songzx.resendWS.entity.MiddleMessageSynclogTab;
 import cn.songzx.resendWS.service.MiddleMessageSynclogServiceI;
 import cn.songzx.resendWS.service.impl.MiddleMessageSynclogServiceImpl;
-import cn.songzx.resendWS.util.ConnectionManager;
 import cn.songzx.resendWS.util.HttpClientResendWSUtil;
 
 /**
@@ -33,7 +32,6 @@ public class ResendWSTest {
 	public static void main(String[] args) {
 		MiddleMessageSynclogServiceI middleMessageSynclogService = new MiddleMessageSynclogServiceImpl();
 		try {
-			System.out.println(ConnectionManager.getConnection());
 			List<MiddleMessageSynclogTab> queryList = middleMessageSynclogService.getAllMiddleMessageSynclogTab();
 			if (queryList != null && queryList.size() > 0) {
 				for (MiddleMessageSynclogTab synclogTab : queryList) {
@@ -45,11 +43,12 @@ public class ResendWSTest {
 					if (responseSoapXml != null && responseSoapXml.contains("true")) {
 						middleMessageSynclogService.updateMiddleMessageSynclogTabByPk(synclogTab.getMms_id());
 					}
-					//break;
 				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			HttpClientResendWSUtil.releaseConnection();
 		}
 	}
 }
