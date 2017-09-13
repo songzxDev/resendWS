@@ -26,9 +26,9 @@ import cn.songzx.resendWS.util.HttpClientResendWSUtil;
 public class ResendWSTest {
 
 	/**
-	 * 调用采购系统审批流程相关webservice服务接口地址
+	 * 调用业务系统审批流程相关webservice服务接口地址
 	 */
-	private static final String TEST_WSDL_URL = "http://10.0.105.12:7014/pur/services/CordysServer?wsdl";// 验证环境
+	private static final String TEST_WSDL_URL = "http://localhost:8888/pur/services/CordysServer?wsdl";// 验证环境
 
 	public static void main(String[] args) {
 		MiddleMessageSynclogServiceI middleMessageSynclogService = new MiddleMessageSynclogServiceImpl();
