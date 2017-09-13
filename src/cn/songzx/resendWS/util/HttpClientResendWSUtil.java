@@ -32,28 +32,44 @@ public class HttpClientResendWSUtil {
 	private static final String ACCEPT_ENCODING_VALUE = "gzip, deflate";
 
 	// 设置代理
-	private static final String PROXYHOSTNAME = "10.0.105.12";
-	private static final int PROXYPORT = 7014;
+	private static final String PROXYHOSTNAME = "localhost";
+	private static final int PROXYPORT = 8855;
 
 	// 默认编码
 	private static final String DEFAULT_ENCODING = "UTF-8";
 
-	/** 获取http Post 对象 */
+	private static ThreadLocal<HttpClient> HTTP_CLIENT_THLL = new ThreadLocal<HttpClient>();
+
+	private static ThreadLocal<HttpPost> HTTP_POST_THLL = new ThreadLocal<HttpPost>();
+
+	/**
+	 *
+	 * @Date: 2017年9月13日下午1:21:56
+	 * @Title: getHttpPost
+	 * @Description: TODO(获取HttpPost对象)
+	 * @param serviceWsdl
+	 * @param requestXml
+	 * @return
+	 * @return HttpPost 返回值类型
+	 */
 	private static HttpPost getHttpPost(String serviceWsdl, String requestXml) {
 		try {
-			HttpPost httpPost = new HttpPost(serviceWsdl);
-			httpPost.setHeader(CONTENT_TYPE_KEY, CONTENT_TYPE_VALUE);
-			httpPost.setHeader(ACCEPT_LANGUAGE_KEY, ACCEPT_LANGUAGE_VALUE);
-			httpPost.setHeader(ACCEPT_KEY, ACCEPT_VALUE);
-			httpPost.setHeader(USER_AGENT_KEY, USER_AGENT_VALUE);
-			httpPost.setHeader(ACCEPT_ENCODING_KEY, ACCEPT_ENCODING_VALUE);
-			httpPost.setHeader("SOAPAction", "");// axis1.x服务端需要设置此参数，否则调用webservice服务会提示500错误
+			HttpPost httpPost = HTTP_POST_THLL.get();// ThreadLocal管理HttpPost资源
+			if (httpPost == null) {
+				httpPost = new HttpPost(serviceWsdl);
+				httpPost.setHeader(CONTENT_TYPE_KEY, CONTENT_TYPE_VALUE);
+				httpPost.setHeader(ACCEPT_LANGUAGE_KEY, ACCEPT_LANGUAGE_VALUE);
+				httpPost.setHeader(ACCEPT_KEY, ACCEPT_VALUE);
+				httpPost.setHeader(USER_AGENT_KEY, USER_AGENT_VALUE);
+				httpPost.setHeader(ACCEPT_ENCODING_KEY, ACCEPT_ENCODING_VALUE);
+				httpPost.setHeader("SOAPAction", "");// axis1.x服务端需要设置此参数，否则调用webservice服务会提示500错误
 
-			// 设置请求参数
-			byte[] bytes = requestXml.getBytes(DEFAULT_ENCODING);
-			ByteArrayEntity byteArrayEntity = new ByteArrayEntity(bytes, 0, bytes.length);
-			httpPost.setEntity(byteArrayEntity);
-
+				// 设置请求参数
+				byte[] bytes = requestXml.getBytes(DEFAULT_ENCODING);
+				ByteArrayEntity byteArrayEntity = new ByteArrayEntity(bytes, 0, bytes.length);
+				httpPost.setEntity(byteArrayEntity);
+				HTTP_POST_THLL.set(httpPost);
+			}
 			return httpPost;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -61,20 +77,31 @@ public class HttpClientResendWSUtil {
 		return null;
 	}
 
-	/** 获取httpclient 对象 */
-	private static DefaultHttpClient getProxyHttpClient() {
-		DefaultHttpClient httpClient = new DefaultHttpClient();
-		// 设置请求链接超时
-		httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 600000);
-		// 设置请求读取超时
-		httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 600000);
-		// 设置socket链接时间
-		httpClient.getParams().setParameter(CoreConnectionPNames.SO_KEEPALIVE, 600000);
+	/**
+	 *
+	 * @Date: 2017年9月13日下午1:21:35
+	 * @Title: getProxyHttpClient
+	 * @Description: TODO(获取HttpClient对象)
+	 * @return
+	 * @return HttpClient 返回值类型
+	 */
+	private static HttpClient getProxyHttpClient() {
+		HttpClient httpClient = HTTP_CLIENT_THLL.get();// ThreadLocal管理HttpClient资源
+		if (httpClient == null) {
+			httpClient = new DefaultHttpClient();
+			// 设置请求链接超时
+			httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 600000);
+			// 设置请求读取超时
+			httpClient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 600000);
+			// 设置socket链接时间
+			httpClient.getParams().setParameter(CoreConnectionPNames.SO_KEEPALIVE, 600000);
 
-		// 设置网络代理
-		// HttpHost proxy = new HttpHost(PROXYHOSTNAME, PROXYPORT);
-		// httpClient.getParams().setParameter(ConnRouteParams.DEFAULT_PROXY,
-		// proxy);
+			// 设置网络代理
+			// HttpHost proxy = new HttpHost(PROXYHOSTNAME, PROXYPORT);
+			// httpClient.getParams().setParameter(ConnRouteParams.DEFAULT_PROXY,
+			// proxy);
+			HTTP_CLIENT_THLL.set(httpClient);
+		}
 		return httpClient;
 	}
 
@@ -143,7 +170,16 @@ public class HttpClientResendWSUtil {
 		return StringUtils.substringBetween(responseXML, beginTag, endTag);
 	}
 
-	/** 发送web service 请求 */
+	/**
+	 *
+	 * @Date: 2017年9月13日下午1:23:05
+	 * @Title: sendPostRequest
+	 * @Description: TODO(调用远程webservice服务接口)
+	 * @param serviceWsdl
+	 * @param requestXml
+	 * @return
+	 * @return String 返回值类型
+	 */
 	public static String sendPostRequest(String serviceWsdl, String requestXml) {
 		// 包裹SOAP 标签
 		// requestXml = wrapSoapTag(requestXml);
@@ -161,6 +197,30 @@ public class HttpClientResendWSUtil {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	/**
+	 *
+	 * @Date: 2017年9月13日下午1:30:59
+	 * @Title: releaseConnection
+	 * @Description: TODO(关闭连接释放资源)
+	 * @return void 返回值类型
+	 */
+	public static void releaseConnection() {
+		try {
+			HttpPost httpPost = HTTP_POST_THLL.get();
+			if (httpPost != null) {
+				/* 释放资源 */
+				httpPost.releaseConnection();
+			}
+			HttpClient httpClient = HTTP_CLIENT_THLL.get();
+			if (httpClient != null) {
+				/* 释放资源 */
+				httpClient.getConnectionManager().shutdown();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 }
